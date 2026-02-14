@@ -23,7 +23,7 @@ from Services.livekit_participants import LiveKitParticipantService
 
 # Configure global logging
 logging.basicConfig(
-    level=logging.INFO if not settings.DEBUG else logging.DEBUG,
+    level=logging.DEBUG if settings.DEBUG else logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
