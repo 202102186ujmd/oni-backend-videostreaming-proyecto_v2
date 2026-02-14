@@ -60,21 +60,6 @@ app.include_router(egress_router.router)
 
 
 # Endpoints raíz y health
-#@app.get("/", tags=["root"])
-async def root2():
-    """Endpoint raíz con información básica de la API."""
-    return {
-        "name": "LiveKit Manager API",
-        "version": "1.0.0",
-        "status": "running",
-        "endpoints": {
-            "rooms": "/rooms",
-            "participants": "/participants",
-            "egress": "/egress",
-            "docs": "/docs",
-        },
-    }
-
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 def root():
     return """

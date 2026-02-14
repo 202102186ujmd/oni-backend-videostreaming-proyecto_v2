@@ -3,18 +3,13 @@ from __future__ import annotations
 import asyncio
 from livekit.protocol.egress import EgressInfo
 import logging
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from sys import prefix
-from typing import Dict, Iterable, List, Optional
-from uuid import uuid4
-from pathlib import PurePosixPath
 from datetime import datetime, timezone
+from typing import Dict, List, Optional
+from pathlib import PurePosixPath
 from livekit import api as lk_api
 from config import settings
 from zoneinfo import ZoneInfo
 from google.protobuf.json_format import MessageToDict
-import asyncio
 
 
 DEFAULT_FILE_TYPE = lk_api.EncodedFileType.MP4
@@ -113,18 +108,31 @@ class LiveKitEgressService:
 
     
     # START ROOM RECORDING
-    #async def record_room(self, *, room_name: str, layout: Optional[str] = None, file_prefix: Optional[str] = None, filename: Optional[str] = None) -> lk_api.EgressInfo:
-    async def record_room(self, *, room_name: str, filename: Optional[str] = None) -> lk_api.EgressInfo:
-        layout ="grid"
-        file_prefix = "Rooms"
+    async def record_room(self, *, room_name: str, filename: Optional[str] = None, use_full_path: bool = False) -> lk_api.EgressInfo:
+        """
+        Record a room composite.
+        
+        Args:
+            room_name: Name of the room to record
+            filename: Optional custom filename
+            use_full_path: If True, uses full/ prefix with timestamp (for full_record)
+        """
+        layout = "grid"
+        
+        if use_full_path:
+            file_prefix = f"full/{room_name}_{datetime.now(LOCAL_TZ).strftime('%Y%m%d_%H%M%S')}"
+        else:
+            file_prefix = "Rooms"
+            
         filename = filename or f"room_{room_name}_{datetime.now(LOCAL_TZ).strftime('%Y%m%d_%H%M%S')}.mp4"
+        
         self._logger.info("Iniciando room composite: room=%s layout=%s", room_name, layout)
         client = await self.client()
         info = await client.egress.start_room_composite_egress(
             lk_api.RoomCompositeEgressRequest(
                 room_name=room_name,
                 layout=layout,
-                file_outputs=[self._file_output(filename=filename, prefix=file_prefix or room_name)],
+                file_outputs=[self._file_output(filename=filename, prefix=file_prefix)],
             )
         )
         return info
@@ -141,51 +149,20 @@ class LiveKitEgressService:
             lk_api.ParticipantEgressRequest(
                 room_name=room_name,
                 identity=identity,
-                file_outputs=[self._file_output(filename=filename, prefix=file_prefix or room_name)],
+                file_outputs=[self._file_output(filename=filename, prefix=file_prefix)],
             )
         )
         return info
 
-    async def record_all_emitters(self, *, room_name: str, min_tracks: int = 1) -> List[lk_api.EgressInfo]:
-        client = await self.client()
-        participants_resp = await client.room.list_participants(lk_api.ListParticipantsRequest(room=room_name))
-        tasks = []
-
-        for participant in participants_resp.participants:
-            active_tracks = [
-                t for t in (participant.tracks or [])
-                if (not getattr(t, "muted", False)) and getattr(t, "type", None) in (lk_api.TrackType.AUDIO, lk_api.TrackType.VIDEO)
-            ]
-            if len(active_tracks) < min_tracks:
-                self._logger.debug("Skipping %s tracks(%d) < min(%d)", participant.identity, len(active_tracks), min_tracks)
-                continue
-
-            #filename = f"participant_{room_name}_{participant.identity}_{uuid4().hex[:8]}.mp4"
-            filename = f"participant_{room_name}_{participant.identity}_{datetime.now(LOCAL_TZ).strftime('%Y%m%d_%H%M%S')}.mp4"
-            tasks.append(client.egress.start_participant_egress(
-                lk_api.ParticipantEgressRequest(
-                    room_name=room_name,
-                    identity=participant.identity,
-                    file_outputs=[self._file_output(filename=filename, prefix=room_name)],
-                )
-            ))
-
-        if not tasks:
-            return []
-            
-
-        infos = await asyncio.gather(*tasks, return_exceptions=True)
-        successful = [i for i in infos if isinstance(i, lk_api.EgressInfo)]
-        errors = [e for e in infos if isinstance(e, Exception)]
-        if errors:
-            self._logger.error("Errores al iniciar egress por participante: %s", errors)
-
+    async def record_all_emitters(self, *, room_name: str, min_tracks: int = 1, use_full_path: bool = False) -> List[lk_api.EgressInfo]:
+        """
+        Record all emitters in a room.
         
-        return successful
-
-    
-    #--------------------------Metodos para el full record-------------------------------------------------
-    async def record_all_emitters2(self, *, room_name: str, min_tracks: int = 1) -> List[lk_api.EgressInfo]:
+        Args:
+            room_name: Name of the room
+            min_tracks: Minimum number of tracks required
+            use_full_path: If True, uses full/ prefix with timestamp (for full_record)
+        """
         client = await self.client()
         participants_resp = await client.room.list_participants(lk_api.ListParticipantsRequest(room=room_name))
         tasks = []
@@ -199,9 +176,13 @@ class LiveKitEgressService:
                 self._logger.debug("Skipping %s tracks(%d) < min(%d)", participant.identity, len(active_tracks), min_tracks)
                 continue
 
-            #filename = f"participant_{room_name}_{participant.identity}_{uuid4().hex[:8]}.mp4"
             filename = f"participant_{room_name}_{participant.identity}_{datetime.now(LOCAL_TZ).strftime('%Y%m%d_%H%M%S')}.mp4"
-            prefix =  f"full/{room_name}_{datetime.now(LOCAL_TZ).strftime('%Y%m%d_%H%M%S')}"
+            
+            if use_full_path:
+                prefix = f"full/{room_name}_{datetime.now(LOCAL_TZ).strftime('%Y%m%d_%H%M%S')}"
+            else:
+                prefix = room_name
+                
             tasks.append(client.egress.start_participant_egress(
                 lk_api.ParticipantEgressRequest(
                     room_name=room_name,
@@ -220,27 +201,13 @@ class LiveKitEgressService:
         if errors:
             self._logger.error("Errores al iniciar egress por participante: %s", errors)
 
+        
         return successful
 
-    #async def record_room(self, *, room_name: str, layout: Optional[str] = None, file_prefix: Optional[str] = None, filename: Optional[str] = None) -> lk_api.EgressInfo:
-    async def record_room2(self, *, room_name: str, file_prefix: Optional[str] = None) -> lk_api.EgressInfo:
-        layout ="grid"
-        file_prefix = f"full/{room_name}_{datetime.now(LOCAL_TZ).strftime('%Y%m%d_%H%M%S')}"
-        filename = f"room_{room_name}_{datetime.now(LOCAL_TZ).strftime('%Y%m%d_%H%M%S')}.mp4"
-        self._logger.info("Iniciando room composite: room=%s layout=%s", room_name, layout)
-        client = await self.client()
-        info = await client.egress.start_room_composite_egress(
-            lk_api.RoomCompositeEgressRequest(
-                room_name=room_name,
-                layout=layout,
-                file_outputs=[self._file_output(filename=filename ,prefix=file_prefix or room_name)],
-            )
-        )
-        return info
-
     async def full_record(self, *, room_name: str) -> Dict[str, List[str]]:
-        room_task = asyncio.create_task(self.record_room2(room_name=room_name))
-        emitters_task = asyncio.create_task(self.record_all_emitters2(room_name=room_name))
+        """Record both room composite and all emitters with full/ prefix."""
+        room_task = asyncio.create_task(self.record_room(room_name=room_name, use_full_path=True))
+        emitters_task = asyncio.create_task(self.record_all_emitters(room_name=room_name, use_full_path=True))
         room_info, emitter_infos = await asyncio.gather(room_task, emitters_task)
         return {"room": [room_info.egress_id], "participants": [i.egress_id for i in emitter_infos]}
 

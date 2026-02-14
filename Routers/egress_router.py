@@ -36,10 +36,6 @@ class EmittersRecordRequest(BaseModel):
 class FullRecordRequest(BaseModel):
     room_name: str = Field(..., min_length=1)
 
-class StopBatchRequest(BaseModel):
-    room_name: str = Field(..., min_length=1)
-    batch_type: Literal["emitters", "full"]
-
 class EgressInfoResponse(BaseModel):
     egress_id: str
     room_name: Optional[str] = None
@@ -157,15 +153,6 @@ async def record_participant_endpoint(payload: ParticipantRecordRequest,
     return format_egress_response(info)
 
 # inicia la grabacion de todos los emisores de un room en especifico
-#@router.post("/emitters", response_model=List[EgressInfoResponse], status_code=status.HTTP_201_CREATED)
-async def record_emitters_endpoint2(payload: EmittersRecordRequest, service: LiveKitEgressService = Depends(get_egress_service)):
-    try:
-        infos = await service.record_all_emitters(room_name=payload.room_name, min_tracks=payload.min_tracks)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
-    return [info_to_response(i) for i in infos]
-
-
 @router.post("/emitters", response_model=EmittersRecordIdsResponse, status_code=status.HTTP_201_CREATED)
 async def record_emitters_endpoint(payload: EmittersRecordRequest, service: LiveKitEgressService = Depends(get_egress_service)):
     try:
@@ -229,7 +216,6 @@ async def stop_recordings_by_ids(
     Continúa aunque alguno falle y reporta error por cada ID.
     """
     all_ids = payload.room + payload.participants
-    client = await service.client()
     results: List[StopRecordingsResponse] = []
 
     async def stop_one(egress_id: str) -> StopRecordingsResponse:
