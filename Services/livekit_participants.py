@@ -68,6 +68,7 @@ class LiveKitParticipantService:
         """
         Verifica si un room existe en LiveKit consultando la lista de rooms activos.
         """
+        lk = None
         try:
             lk = await self._get_client()
             response = await lk.room.list_rooms(
@@ -78,7 +79,8 @@ class LiveKitParticipantService:
         except Exception:
             return False
         finally:
-            await lk.aclose()
+            if lk:
+                await lk.aclose()
 
     async def generate_token(
         self,
@@ -168,6 +170,7 @@ class LiveKitParticipantService:
         return results
 
     async def list_all_active_participants(self) -> List[ParticipantSummary]:
+        lk = None
         try:
             lk = await self._get_client()
             rooms_resp = await lk.room.list_rooms(lk_api.ListRoomsRequest())
@@ -187,9 +190,11 @@ class LiveKitParticipantService:
                     )
             return summaries
         finally:
-            await lk.aclose()
+            if lk:
+                await lk.aclose()
 
     async def list_room_participants(self, *, room_name: str) -> List[ParticipantSummary]:
+        lk = None
         try:
             lk = await self._get_client()
             participants_resp = await lk.room.list_participants(
@@ -206,7 +211,8 @@ class LiveKitParticipantService:
             ]
             return participants
         finally:
-            await lk.aclose()
+            if lk:
+                await lk.aclose()
 
     @staticmethod
     def _extract_role(metadata_json: str | None) -> Optional[str]:
@@ -220,10 +226,12 @@ class LiveKitParticipantService:
         return role.lower() if isinstance(role, str) else None
 
     async def remove_participant(self, *, room_name: str, identity: str) -> None:
+        lk = None
         try:
             lk = await self._get_client()
             await lk.room.remove_participant(
                 lk_api.RoomParticipantIdentity(room=room_name, identity=identity)
             )
         finally:
-            await lk.aclose()
+            if lk:
+                await lk.aclose()

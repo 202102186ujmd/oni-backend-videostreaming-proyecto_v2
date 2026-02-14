@@ -38,5 +38,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Run with configurable workers (default 4)
 # Override with: docker run -e WORKERS=2 ...
 ENV WORKERS=4
-CMD uvicorn main:app --host 0.0.0.0 --port 8000 --workers ${WORKERS}
+CMD sh -c "uvicorn main:app --host 0.0.0.0 --port 8000 --workers ${WORKERS}"
 
