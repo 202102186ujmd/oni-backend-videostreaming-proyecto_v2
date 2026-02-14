@@ -68,8 +68,8 @@ class LiveKitParticipantService:
         """
         Verifica si un room existe en LiveKit consultando la lista de rooms activos.
         """
-        lk = await self._get_client()
         try:
+            lk = await self._get_client()
             response = await lk.room.list_rooms(
                 lk_api.ListRoomsRequest(names=[room_name])
             )
@@ -168,8 +168,8 @@ class LiveKitParticipantService:
         return results
 
     async def list_all_active_participants(self) -> List[ParticipantSummary]:
-        lk = await self._get_client()
         try:
+            lk = await self._get_client()
             rooms_resp = await lk.room.list_rooms(lk_api.ListRoomsRequest())
             summaries: List[ParticipantSummary] = []
             for room in rooms_resp.rooms:
@@ -190,8 +190,8 @@ class LiveKitParticipantService:
             await lk.aclose()
 
     async def list_room_participants(self, *, room_name: str) -> List[ParticipantSummary]:
-        lk = await self._get_client()
         try:
+            lk = await self._get_client()
             participants_resp = await lk.room.list_participants(
                 lk_api.ListParticipantsRequest(room=room_name)
             )
@@ -220,8 +220,8 @@ class LiveKitParticipantService:
         return role.lower() if isinstance(role, str) else None
 
     async def remove_participant(self, *, room_name: str, identity: str) -> None:
-        lk = await self._get_client()
         try:
+            lk = await self._get_client()
             await lk.room.remove_participant(
                 lk_api.RoomParticipantIdentity(room=room_name, identity=identity)
             )

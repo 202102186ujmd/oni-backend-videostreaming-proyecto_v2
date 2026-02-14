@@ -72,8 +72,6 @@ app = FastAPI(
 
 
 # Configurar CORS
-from config import settings
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,

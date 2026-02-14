@@ -72,8 +72,8 @@ class LiveKitRoomService:
             f"empty_timeout={empty_timeout})"
         )
         
-        lk = await self._get_client()
         try:
+            lk = await self._get_client()
             room = await lk.room.create_room(
                 api.CreateRoomRequest(
                     name=name,
@@ -97,8 +97,8 @@ class LiveKitRoomService:
         Returns:
             Objeto Room o None si no existe
         """
-        lk = await self._get_client()
         try:
+            lk = await self._get_client()
             response = await lk.room.list_rooms(
                 api.ListRoomsRequest(names=[room_name])
             )
@@ -117,8 +117,8 @@ class LiveKitRoomService:
         Returns:
             Lista de objetos Room
         """
-        lk = await self._get_client()
         try:
+            lk = await self._get_client()
             request = api.ListRoomsRequest()
             if names:
                 request.names.extend(names)
@@ -146,8 +146,8 @@ class LiveKitRoomService:
         Returns:
             Objeto Room actualizado
         """
-        lk = await self._get_client()
         try:
+            lk = await self._get_client()
             room = await lk.room.update_room_metadata(
                 api.UpdateRoomMetadataRequest(
                     room=room_name,
@@ -169,8 +169,8 @@ class LiveKitRoomService:
         """
         logger.info(f"Eliminando sala '{room_name}'")
         
-        lk = await self._get_client()
         try:
+            lk = await self._get_client()
             await lk.room.delete_room(
                 api.DeleteRoomRequest(room=room_name)
             )
