@@ -29,8 +29,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# Crear singleton de egress
+# Service singletons - created once and reused
+from Services.livekit_room import LiveKitRoomService
+from Services.livekit_participants import LiveKitParticipantService
+
 egress_service = LiveKitEgressService()
+room_service = LiveKitRoomService()
+participant_service = LiveKitParticipantService()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -44,6 +49,11 @@ async def lifespan(app: FastAPI):
     except ValueError as e:
         logger.error("Configuration validation failed: %s", e)
         raise
+    
+    # Store services in app state for access across the application
+    app.state.egress_service = egress_service
+    app.state.room_service = room_service
+    app.state.participant_service = participant_service
     
     yield
     # Shutdown
@@ -146,9 +156,20 @@ async def health_check():
     return {"status": "healthy"}
 
 
-# Acceso al singleton en routers
+# Acceso a singletons via app state
 def get_egress_service() -> LiveKitEgressService:
+    """Get singleton egress service."""
     return egress_service
+
+
+def get_room_service() -> LiveKitRoomService:
+    """Get singleton room service."""
+    return room_service
+
+
+def get_participant_service() -> LiveKitParticipantService:
+    """Get singleton participant service."""
+    return participant_service
 
 
 # Uvicorn

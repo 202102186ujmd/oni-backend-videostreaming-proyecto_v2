@@ -17,9 +17,10 @@ router = APIRouter(prefix="/egress",
                    dependencies=[Depends(verify_basic_auth)]
                    )
 
-# Dependencia: espera que haya una instancia singleton creada externamente
+# Dependencia: obtiene singleton desde main
 def get_egress_service() -> LiveKitEgressService:
-    return LiveKitEgressService()  # si usas singleton inyectado en app, reemplaza por app.state.service
+    from main import get_egress_service as get_service
+    return get_service()
 
 class RoomRecordRequest(BaseModel):
     room_name: str = Field(..., min_length=1)

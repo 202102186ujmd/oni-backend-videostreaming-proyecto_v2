@@ -19,7 +19,8 @@ router = APIRouter(prefix="/participants",
 
 # ---------------------- DEPENDENCY -----------------------------
 def get_participant_service() -> LiveKitParticipantService:
-    return LiveKitParticipantService()
+    from main import get_participant_service as get_service
+    return get_service()
 
 # ---------------------- MODELOS -----------------------------
 class TokenRequest(BaseModel):

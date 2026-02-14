@@ -17,8 +17,10 @@ router = APIRouter(prefix="/rooms",
                    )
 
 
+# Dependency - will get singleton from main module
 def get_room_service() -> LiveKitRoomService:
-    return LiveKitRoomService()
+    from main import get_room_service as get_service
+    return get_service()
 
 
 # ------------------------------------------------------
