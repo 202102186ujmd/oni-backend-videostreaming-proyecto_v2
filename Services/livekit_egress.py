@@ -256,7 +256,7 @@ class LiveKitEgressService:
     async def list_recordings(self) -> List[lk_api.EgressInfo]:
         client = await self.client()
         resp = await client.egress.list_egress(lk_api.ListEgressRequest())
-        return list[EgressInfo](resp.items)
+        return list(resp.items)
     
 
     async def list_recordings_by_room(self, *, room_name: str, active_only: bool = False) -> List[lk_api.EgressInfo]:

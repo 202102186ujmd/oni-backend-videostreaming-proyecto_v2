@@ -72,8 +72,8 @@ class LiveKitRoomService:
             f"empty_timeout={empty_timeout})"
         )
         
+        lk = await self._get_client()
         try:
-            lk = await self._get_client()
             room = await lk.room.create_room(
                 api.CreateRoomRequest(
                     name=name,
@@ -81,14 +81,11 @@ class LiveKitRoomService:
                     empty_timeout=empty_timeout
                 )
             )
-            await lk.aclose()
             
             logger.info(f"Sala '{name}' creada exitosamente (sid={room.sid})")
             return room
-            
-        except Exception as e:
-            logger.error(f"Error al crear sala '{name}': {e}")
-            raise
+        finally:
+            await lk.aclose()
 
     async def get_room(self, *, room_name: str) -> Optional[api.Room]:
         """
@@ -100,18 +97,15 @@ class LiveKitRoomService:
         Returns:
             Objeto Room o None si no existe
         """
+        lk = await self._get_client()
         try:
-            lk = await self._get_client()
             response = await lk.room.list_rooms(
                 api.ListRoomsRequest(names=[room_name])
             )
-            await lk.aclose()
             
             return response.rooms[0] if response.rooms else None
-                
-        except Exception as e:
-            logger.error(f"Error al obtener sala '{room_name}': {e}")
-            return None
+        finally:
+            await lk.aclose()
 
     async def list_rooms(self, *, names: Optional[List[str]] = None) -> List[api.Room]:
         """
@@ -123,21 +117,18 @@ class LiveKitRoomService:
         Returns:
             Lista de objetos Room
         """
+        lk = await self._get_client()
         try:
-            lk = await self._get_client()
             request = api.ListRoomsRequest()
             if names:
                 request.names.extend(names)
                     
             response = await lk.room.list_rooms(request)
-            await lk.aclose()
             
             logger.info(f"Se encontraron {len(response.rooms)} sala(s)")
             return list(response.rooms)
-            
-        except Exception as e:
-            logger.error(f"Error al listar salas: {e}")
-            raise
+        finally:
+            await lk.aclose()
 
     async def update_room_metadata(
         self,
@@ -155,22 +146,19 @@ class LiveKitRoomService:
         Returns:
             Objeto Room actualizado
         """
+        lk = await self._get_client()
         try:
-            lk = await self._get_client()
             room = await lk.room.update_room_metadata(
                 api.UpdateRoomMetadataRequest(
                     room=room_name,
                     metadata=json.dumps(metadata),
                 )
             )
-            await lk.aclose()
             
             logger.info(f"Metadatos actualizados para sala '{room_name}'")
             return room
-            
-        except Exception as e:
-            logger.error(f"Error al actualizar metadatos de sala '{room_name}': {e}")
-            raise
+        finally:
+            await lk.aclose()
 
     async def delete_room(self, *, room_name: str) -> None:
         """
@@ -181,18 +169,15 @@ class LiveKitRoomService:
         """
         logger.info(f"Eliminando sala '{room_name}'")
         
+        lk = await self._get_client()
         try:
-            lk = await self._get_client()
             await lk.room.delete_room(
                 api.DeleteRoomRequest(room=room_name)
             )
-            await lk.aclose()
             
             logger.info(f"Sala '{room_name}' eliminada exitosamente")
-            
-        except Exception as e:
-            logger.error(f"Error al eliminar sala '{room_name}': {e}")
-            raise
+        finally:
+            await lk.aclose()
 
     async def room_exists(self, *, room_name: str) -> bool:
         """

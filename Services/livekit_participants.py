@@ -68,16 +68,17 @@ class LiveKitParticipantService:
         """
         Verifica si un room existe en LiveKit consultando la lista de rooms activos.
         """
+        lk = await self._get_client()
         try:
-            lk = await self._get_client()
             response = await lk.room.list_rooms(
                 lk_api.ListRoomsRequest(names=[room_name])
             )
-            await lk.aclose()
             
             return len(response.rooms) > 0
         except Exception:
             return False
+        finally:
+            await lk.aclose()
 
     async def generate_token(
         self,
