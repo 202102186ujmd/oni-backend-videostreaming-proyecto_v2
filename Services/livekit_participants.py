@@ -1,7 +1,7 @@
 from __future__ import annotations
 import json
-from typing import Any, Dict, Iterable, List, Optional
-from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+from datetime import datetime, timedelta, timezone
 from livekit.api.access_token import AccessToken, VideoGrants
 from livekit import api as lk_api
 from config import settings
@@ -68,16 +68,19 @@ class LiveKitParticipantService:
         """
         Verifica si un room existe en LiveKit consultando la lista de rooms activos.
         """
+        lk = None
         try:
             lk = await self._get_client()
             response = await lk.room.list_rooms(
                 lk_api.ListRoomsRequest(names=[room_name])
             )
-            await lk.aclose()
             
-            return len(response.rooms) > 0
+            return bool(response.rooms)
         except Exception:
             return False
+        finally:
+            if lk:
+                await lk.aclose()
 
     async def generate_token(
         self,
@@ -116,7 +119,7 @@ class LiveKitParticipantService:
         if ttl_seconds is None:
             ttl_seconds = 86400  # 24 horas por defecto
         
-        expiration_date = datetime.utcnow() + timedelta(seconds=ttl_seconds)
+        expiration_date = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
 
         token = (
             AccessToken(api_key=self._api_key, api_secret=self._api_secret)
@@ -140,7 +143,7 @@ class LiveKitParticipantService:
     async def generate_tokens_for_rooms(
         self,
         *,
-        rooms: Iterable[str],
+        rooms: List[str],
         identity: str,
         role: str,
         name: Optional[str] = None,
@@ -167,41 +170,49 @@ class LiveKitParticipantService:
         return results
 
     async def list_all_active_participants(self) -> List[ParticipantSummary]:
-        lk = await self._get_client()
-        rooms_resp = await lk.room.list_rooms(lk_api.ListRoomsRequest())
-        summaries: List[ParticipantSummary] = []
-        for room in rooms_resp.rooms:
-            participants_resp = await lk.room.list_participants(
-                lk_api.ListParticipantsRequest(room=room.name)
-            )
-            for p in participants_resp.participants:
-                summaries.append(
-                    ParticipantSummary(
-                        room=room.name,
-                        identity=p.identity,
-                        name=p.name or p.identity,
-                        role=self._extract_role(p.metadata) or ROLE_VIEWER,
-                    )
+        lk = None
+        try:
+            lk = await self._get_client()
+            rooms_resp = await lk.room.list_rooms(lk_api.ListRoomsRequest())
+            summaries: List[ParticipantSummary] = []
+            for room in rooms_resp.rooms:
+                participants_resp = await lk.room.list_participants(
+                    lk_api.ListParticipantsRequest(room=room.name)
                 )
-        await lk.aclose()
-        return summaries
+                for p in participants_resp.participants:
+                    summaries.append(
+                        ParticipantSummary(
+                            room=room.name,
+                            identity=p.identity,
+                            name=p.name or p.identity,
+                            role=self._extract_role(p.metadata) or ROLE_VIEWER,
+                        )
+                    )
+            return summaries
+        finally:
+            if lk:
+                await lk.aclose()
 
     async def list_room_participants(self, *, room_name: str) -> List[ParticipantSummary]:
-        lk = await self._get_client()
-        participants_resp = await lk.room.list_participants(
-            lk_api.ListParticipantsRequest(room=room_name)
-        )
-        participants = [
-            ParticipantSummary(
-                room=room_name,
-                identity=p.identity,
-                name=p.name or p.identity,
-                role=self._extract_role(p.metadata) or ROLE_VIEWER,
+        lk = None
+        try:
+            lk = await self._get_client()
+            participants_resp = await lk.room.list_participants(
+                lk_api.ListParticipantsRequest(room=room_name)
             )
-            for p in participants_resp.participants
-        ]
-        await lk.aclose()
-        return participants
+            participants = [
+                ParticipantSummary(
+                    room=room_name,
+                    identity=p.identity,
+                    name=p.name or p.identity,
+                    role=self._extract_role(p.metadata) or ROLE_VIEWER,
+                )
+                for p in participants_resp.participants
+            ]
+            return participants
+        finally:
+            if lk:
+                await lk.aclose()
 
     @staticmethod
     def _extract_role(metadata_json: str | None) -> Optional[str]:
@@ -215,8 +226,12 @@ class LiveKitParticipantService:
         return role.lower() if isinstance(role, str) else None
 
     async def remove_participant(self, *, room_name: str, identity: str) -> None:
-        lk = await self._get_client()
-        await lk.room.remove_participant(
-            lk_api.RoomParticipantIdentity(room=room_name, identity=identity)
-        )
-        await lk.aclose()
+        lk = None
+        try:
+            lk = await self._get_client()
+            await lk.room.remove_participant(
+                lk_api.RoomParticipantIdentity(room=room_name, identity=identity)
+            )
+        finally:
+            if lk:
+                await lk.aclose()

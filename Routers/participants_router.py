@@ -19,7 +19,8 @@ router = APIRouter(prefix="/participants",
 
 # ---------------------- DEPENDENCY -----------------------------
 def get_participant_service() -> LiveKitParticipantService:
-    return LiveKitParticipantService()
+    from main import get_participant_service as get_service
+    return get_service()
 
 # ---------------------- MODELOS -----------------------------
 class TokenRequest(BaseModel):
@@ -131,19 +132,6 @@ async def generate_tokens_multiple_endpoint(
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Error interno: {str(exc)}")
-
-#@router.get("", response_model=List[ParticipantSummaryResponse])
-async def list_participants_endpoint(
-    service: LiveKitParticipantService = Depends(get_participant_service),
-):
-    """
-    Lista todos los participantes activos en todos los rooms.
-    """
-    try:
-        summaries = await service.list_all_active_participants()
-        return [summary_to_response(s) for s in summaries]
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
 
 @router.get("/{room_name}", response_model=List[ParticipantSummaryResponse])
 async def list_room_participants_endpoint(

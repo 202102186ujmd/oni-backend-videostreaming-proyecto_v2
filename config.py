@@ -1,8 +1,11 @@
 # config.py — Configuración central del LiveKit Manager API
+import logging
 from typing import Optional
 from pydantic import Field, AnyHttpUrl, field_validator
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -208,8 +211,8 @@ def validate_settings():
             f"Faltan las siguientes configuraciones requeridas: {', '.join(missing)}"
         )
     
-    print("✅ Configuración validada correctamente")
-    print(f"   - LiveKit URL: {settings.LIVEKIT_URL}")
-    print(f"   - MinIO: {settings.minio_url}")
-    print(f"   - Bucket: {settings.MINIO_BUCKET_NAME}")
-    print(f"   - Modo: {'Producción' if settings.is_production else 'Desarrollo'}")
+    logger.info("✅ Configuración validada correctamente")
+    logger.info("   - LiveKit URL: %s", settings.LIVEKIT_URL)
+    logger.info("   - MinIO: %s", settings.minio_url)
+    logger.info("   - Bucket: %s", settings.MINIO_BUCKET_NAME)
+    logger.info("   - Modo: %s", 'Producción' if settings.is_production else 'Desarrollo')

@@ -1,5 +1,6 @@
 # auth/basic_auth.py
 import logging
+import secrets
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from config import settings
@@ -17,13 +18,17 @@ def verify_basic_auth(credentials: HTTPBasicCredentials = Depends(security)):
     username = credentials.username
     password = credentials.password
 
-    if username != settings.API_USER or password != settings.API_PASSWORD:
-        logger.warning(f"Intento fallido de autenticación con usuario: {username}")
+    # Use secrets.compare_digest to prevent timing attacks
+    username_correct = secrets.compare_digest(username.encode('utf-8'), settings.API_USER.encode('utf-8'))
+    password_correct = secrets.compare_digest(password.encode('utf-8'), settings.API_PASSWORD.encode('utf-8'))
+    
+    if not (username_correct and password_correct):
+        logger.warning("Intento fallido de autenticación con usuario: %s", username)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenciales incorrectas",
             headers={"WWW-Authenticate": "Basic"},
         )
 
-    logger.info(f"Usuario autenticado correctamente: {username}")
+    logger.info("Usuario autenticado correctamente: %s", username)
     return {"username": username}

@@ -17,8 +17,10 @@ router = APIRouter(prefix="/rooms",
                    )
 
 
+# Dependency - will get singleton from main module
 def get_room_service() -> LiveKitRoomService:
-    return LiveKitRoomService()
+    from main import get_room_service as get_service
+    return get_service()
 
 
 # ------------------------------------------------------
@@ -29,8 +31,8 @@ class RoomCreateRequest(BaseModel):
     name: str = Field(..., min_length=1)
 
     # 0 = ilimitado en LiveKit → máximo permitido
-    max_participants: conint(ge=1000) = Field(
-        1000,
+    max_participants: conint(ge=0) = Field(
+        0,
         description="Número máximo de participantes (0 = sin límite)")
     # 0 = nunca cerrar → máximo permitido
     empty_timeout: conint(ge=0) = Field(
@@ -65,7 +67,7 @@ def room_to_response(room: lk_api.Room) -> RoomResponse:
     if creation_time is not None:
         try:
             creation_time = datetime.fromtimestamp(creation_time).isoformat()
-        except:
+        except (ValueError, OSError, TypeError):
             creation_time = str(creation_time)
 
     return RoomResponse(
@@ -83,7 +85,7 @@ def room_to_response(room: lk_api.Room) -> RoomResponse:
 #   POST /rooms
 # ------------------------------------------------------
 
-@router.post("", summary="Crear sala")
+@router.post("", summary="Crear sala", status_code=status.HTTP_201_CREATED)
 async def create_room_endpoint(
     payload: RoomCreateRequest,
     service: LiveKitRoomService = Depends(get_room_service),
@@ -95,10 +97,9 @@ async def create_room_endpoint(
     rooms = await service.list_rooms()
     for room in rooms:
         if room.name == payload.name:
-            return APIResponse(
-                status=409,
-                message="La sala ya existe y está activa",
-                data=room_to_response(room)
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="La sala ya existe y está activa"
             )
 
     # Crear sala nueva
@@ -112,7 +113,7 @@ async def create_room_endpoint(
         raise HTTPException(status_code=exc.status or 500, detail=str(exc))
 
     return APIResponse(
-        status=200,
+        status=201,
         message="Sala creada con éxito",
         data=room_to_response(room)
     )
