@@ -8,13 +8,25 @@ Expone endpoints para:
 """
 
 from __future__ import annotations
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse
 
+from config import settings, validate_settings
 from Routers import egress_router, participants_router, room_router
 from Services.livekit_egress import LiveKitEgressService
+
+
+# Configure global logging
+logging.basicConfig(
+    level=logging.INFO if not settings.DEBUG else logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
+logger = logging.getLogger(__name__)
 
 
 # Crear singleton de egress
@@ -24,12 +36,20 @@ egress_service = LiveKitEgressService()
 async def lifespan(app: FastAPI):
     """Gestión del ciclo de vida de la aplicación."""
     # Startup
-    print("LiveKit Manager API starting up...")
+    logger.info("LiveKit Manager API starting up...")
+    
+    # Validate settings on startup
+    try:
+        validate_settings()
+    except ValueError as e:
+        logger.error("Configuration validation failed: %s", e)
+        raise
+    
     yield
     # Shutdown
-    print("LiveKit Manager API shutting down...")
+    logger.info("LiveKit Manager API shutting down...")
     await egress_service.close()
-    print("LiveKit client closed")
+    logger.info("LiveKit client closed")
 
 
 # Instancia de FastAPI
