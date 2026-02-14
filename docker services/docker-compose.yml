@@ -1,0 +1,152 @@
+services:
+
+  #---------------------------------------LIVEKIT SERVER---------------------------------------#
+  livekit-server:
+    image: livekit/livekit-server:latest
+    container_name: livekit-server
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "40000-40100:40000-40100/udp"
+    environment:
+      LIVEKIT_PORT: 7880
+      LIVEKIT_BIND_ADDRESSES: 0.0.0.0
+
+      LIVEKIT_RTC_NODE_IP: "10.150.11.12"
+      LIVEKIT_ANNOUNCE_IP: "10.150.11.12"
+
+      LIVEKIT_RTC_PORT_RANGE_START: 40000
+      LIVEKIT_RTC_PORT_RANGE_END: 40100
+      LIVEKIT_RTC_TCP_PORT: 7881
+
+      LIVEKIT_RTC_USE_EXTERNAL_IP: "false"
+      LIVEKIT_RTC_STUN_SERVERS: ""
+      LIVEKIT_RTC_ENABLE_LOOPBACK_CANDIDATE: "true"
+
+      LIVEKIT_REDIS_ADDRESS: livekit-redis:6379
+      LIVEKIT_REDIS_DB: 0
+
+      LIVEKIT_KEYS: "devkey: 5974351ca81282f4983c3d09929b5f0c"
+
+      # INGRESS CONFIG
+      LIVEKIT_INGRESS_RTMP_BASE_URL: "rtmp://10.150.11.12/x"
+      LIVEKIT_INGRESS_WHIP_BASE_URL: "http://10.150.11.12/w"
+
+      LIVEKIT_LOG_LEVEL: debug
+      LIVEKIT_ROOM_EMPTY_TIMEOUT: 900
+      LIVEKIT_ROOM_AUTO_CREATE: "true"
+
+    depends_on:
+      livekit-redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - livekit-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:7880"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  #---------------------------------------LIVEKIT INGRESS---------------------------------------#
+  livekit-ingress:
+    image: livekit/ingress:latest
+    container_name: livekit-ingress
+    environment:
+      INGRESS_CONFIG_FILE: /etc/ingress.yaml
+    volumes:
+      - ./ingress-config.yaml:/etc/ingress.yaml:ro
+    ports:
+      - "1935:1935"   # RTMP
+      - "8080:8080"   # WHIP
+    depends_on:
+      livekit-server:
+        condition: service_healthy
+      livekit-redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - livekit-network
+
+
+  #---------------------------------------LIVEKIT EGRESS---------------------------------------#
+  livekit-egress:
+    image: livekit/egress:latest
+    container_name: livekit-egress
+    environment:
+      EGRESS_CONFIG_FILE: /etc/egress.yaml
+    volumes:
+      - ./egress-config.yaml:/etc/egress.yaml:ro
+      - egress-temp:/tmp/egress
+      - /dev/shm:/dev/shm
+    depends_on:
+      livekit-server:
+        condition: service_healthy
+      livekit-redis:
+        condition: service_healthy
+      #minio:
+      #  condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - livekit-network
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - seccomp=unconfined
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8089/health" ]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  #---------------------------------------REDIS---------------------------------------#
+  livekit-redis:
+    image: redis:7-alpine
+    container_name: livekit-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - livekit-network
+
+  #---------------------------------------MINIO---------------------------------------#
+  minio:
+    image: minio/minio
+    container_name: minio
+    ports:
+      - "9000:9000"   # API S3
+      - "9001:9001"   # Consola Web
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    restart: unless-stopped
+    networks:
+      - livekit-network
+    #healthcheck:
+    #  test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live || exit 1"]
+    #  interval: 10s
+    #  timeout: 5s
+    #  retries: 5
+
+volumes:
+  redis-data:
+    driver: local
+  egress-temp:
+    driver: local
+  minio-data:
+    driver: local
+
+networks:
+  livekit-network:
+    driver: bridge

@@ -1,0 +1,33 @@
+# --- LiveKit Egress Config ---
+
+# Credenciales del LiveKit Server
+api_key: devkey
+api_secret: 5974351ca81282f4983c3d09929b5f0c
+ws_url: ws://livekit-server:7880
+
+# Redis (mismo que usa el livekit-server)
+redis:
+  address: livekit-redis:6379
+  db: 0
+
+# Puertos internos opcionales
+health_port: 8089
+template_port: 7980
+
+# Logging
+logging:
+  level: debug
+  json: false
+
+# Desactivar sandbox (necesario dentro de Docker)
+enable_chrome_sandbox: false
+
+# Storage: usar MinIO (compatible S3)
+s3:
+  access_key: minioadmin
+  secret: minioadmin
+  endpoint: http://minio:9000
+  bucket: livekit-recordings
+  region: us-east-1
+  force_path_style: true  # importante para MinIO
+

@@ -1,0 +1,13 @@
+api_key: devkey
+api_secret: 5974351ca81282f4983c3d09929b5f0c
+ws_url: ws://livekit-server:7880
+
+redis:
+  address: livekit-redis:6379
+  db: 0
+
+log_level: debug
+
+# Puertos para recibir entradas
+rtmp_port: 1935
+whip_port: 8080
