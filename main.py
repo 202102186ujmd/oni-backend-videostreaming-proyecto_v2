@@ -17,6 +17,8 @@ from starlette.responses import HTMLResponse
 from config import settings, validate_settings
 from Routers import egress_router, participants_router, room_router
 from Services.livekit_egress import LiveKitEgressService
+from Services.livekit_room import LiveKitRoomService
+from Services.livekit_participants import LiveKitParticipantService
 
 
 # Configure global logging
@@ -30,9 +32,6 @@ logger = logging.getLogger(__name__)
 
 
 # Service singletons - created once and reused
-from Services.livekit_room import LiveKitRoomService
-from Services.livekit_participants import LiveKitParticipantService
-
 egress_service = LiveKitEgressService()
 room_service = LiveKitRoomService()
 participant_service = LiveKitParticipantService()

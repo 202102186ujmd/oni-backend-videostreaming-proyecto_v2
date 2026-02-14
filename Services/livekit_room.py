@@ -68,8 +68,8 @@ class LiveKitRoomService:
 
 
         logger.info(
-            f"Creando sala '{name}' (max_participants={max_participants}, "
-            f"empty_timeout={empty_timeout})"
+            "Creando sala '%s' (max_participants=%d, empty_timeout=%d)",
+            name, max_participants, empty_timeout
         )
         
         lk = None
@@ -83,7 +83,7 @@ class LiveKitRoomService:
                 )
             )
             
-            logger.info(f"Sala '{name}' creada exitosamente (sid={room.sid})")
+            logger.info("Sala '%s' creada exitosamente (sid=%s)", name, room.sid)
             return room
         finally:
             if lk:
@@ -130,7 +130,7 @@ class LiveKitRoomService:
                     
             response = await lk.room.list_rooms(request)
             
-            logger.info(f"Se encontraron {len(response.rooms)} sala(s)")
+            logger.info("Se encontraron %d sala(s)", len(response.rooms))
             return list(response.rooms)
         finally:
             if lk:
@@ -162,7 +162,7 @@ class LiveKitRoomService:
                 )
             )
             
-            logger.info(f"Metadatos actualizados para sala '{room_name}'")
+            logger.info("Metadatos actualizados para sala '%s'", room_name)
             return room
         finally:
             if lk:
@@ -175,7 +175,7 @@ class LiveKitRoomService:
         Args:
             room_name: Nombre de la sala a eliminar
         """
-        logger.info(f"Eliminando sala '{room_name}'")
+        logger.info("Eliminando sala '%s'", room_name)
         
         lk = None
         try:
@@ -184,7 +184,7 @@ class LiveKitRoomService:
                 api.DeleteRoomRequest(room=room_name)
             )
             
-            logger.info(f"Sala '{room_name}' eliminada exitosamente")
+            logger.info("Sala '%s' eliminada exitosamente", room_name)
         finally:
             if lk:
                 await lk.aclose()

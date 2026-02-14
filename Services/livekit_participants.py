@@ -75,7 +75,7 @@ class LiveKitParticipantService:
                 lk_api.ListRoomsRequest(names=[room_name])
             )
             
-            return len(response.rooms) > 0
+            return bool(response.rooms)
         except Exception:
             return False
         finally:
