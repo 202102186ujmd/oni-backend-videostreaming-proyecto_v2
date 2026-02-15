@@ -15,8 +15,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse
 
 from config import settings, validate_settings
-from Routers import egress_router, participants_router, room_router
+from Routers import egress_router, ingress_router, participants_router, room_router
 from Services.livekit_egress import LiveKitEgressService
+from Services.livekit_ingress import LiveKitIngressService
 from Services.livekit_room import LiveKitRoomService
 from Services.livekit_participants import LiveKitParticipantService
 
@@ -33,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 # Service singletons - created once and reused
 egress_service = LiveKitEgressService()
+ingress_service = LiveKitIngressService()
 room_service = LiveKitRoomService()
 participant_service = LiveKitParticipantService()
 
@@ -51,6 +53,7 @@ async def lifespan(app: FastAPI):
     
     # Store services in app state for access across the application
     app.state.egress_service = egress_service
+    app.state.ingress_service = ingress_service
     app.state.room_service = room_service
     app.state.participant_service = participant_service
     
@@ -58,6 +61,7 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("LiveKit Manager API shutting down...")
     await egress_service.close()
+    await ingress_service.close()
     logger.info("LiveKit client closed")
 
 
@@ -84,6 +88,7 @@ app.add_middleware(
 app.include_router(room_router.router)
 app.include_router(participants_router.router)
 app.include_router(egress_router.router)
+app.include_router(ingress_router.router)
 
 
 # Endpoints raíz y health
@@ -157,6 +162,11 @@ async def health_check():
 def get_egress_service() -> LiveKitEgressService:
     """Get singleton egress service."""
     return egress_service
+
+
+def get_ingress_service() -> LiveKitIngressService:
+    """Get singleton ingress service."""
+    return ingress_service
 
 
 def get_room_service() -> LiveKitRoomService:
