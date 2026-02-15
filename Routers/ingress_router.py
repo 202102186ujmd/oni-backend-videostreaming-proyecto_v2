@@ -6,7 +6,7 @@ Expone endpoints REST para crear, listar, actualizar y eliminar ingress (RTMP, W
 from __future__ import annotations
 from typing import List, Optional, Literal
 from fastapi import APIRouter, Depends, HTTPException, Path, status
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, model_validator
 from livekit import api as lk_api
 from Services.livekit_ingress import LiveKitIngressService
 from auth.basic_auth import verify_basic_auth
@@ -42,14 +42,12 @@ class IngressCreateRequest(BaseModel):
     url: Optional[str] = Field(None, description="URL fuente (requerido para type='url')")
     enable_transcoding: Optional[bool] = Field(None, description="Habilitar transcodificación")
 
-    @field_validator("url")
-    @classmethod
-    def validate_url_for_type(cls, v, info):
+    @model_validator(mode='after')
+    def validate_url_for_type(self):
         """Valida que url esté presente cuando input_type es 'url'."""
-        # Note: info.data is used in Pydantic v2 to access other fields
-        if hasattr(info, 'data') and info.data.get('input_type') == 'url' and not v:
+        if self.input_type == 'url' and not self.url:
             raise ValueError("url es requerido cuando input_type es 'url'")
-        return v
+        return self
 
 
 class IngressUpdateRequest(BaseModel):
@@ -206,8 +204,8 @@ async def list_ingress_by_room_endpoint(
     description="Actualiza la configuración de un ingress existente. El ingress debe estar inactivo."
 )
 async def update_ingress_endpoint(
+    payload: IngressUpdateRequest,
     ingress_id: str = Path(..., min_length=1, description="ID del ingress a actualizar"),
-    payload: IngressUpdateRequest = ...,
     service: LiveKitIngressService = Depends(get_ingress_service)
 ):
     """
