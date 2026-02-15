@@ -182,7 +182,7 @@ async def list_ingress_endpoint(
 
 
 @router.get(
-    "/{room_name}",
+    "/by-room/{room_name}",
     response_model=List[IngressInfoResponse],
     summary="Listar ingress por sala",
     description="Obtiene todos los ingress asociados a una sala específica."
